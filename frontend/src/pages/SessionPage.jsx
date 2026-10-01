@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { subjects, fatigueDisclaimer } from '../data/demoData'
 import Button from '../components/ui/Button'
+import { createSession } from '../services/api'
 
 const SessionPage = () => {
   const [form, setForm] = useState({
@@ -12,11 +13,43 @@ const SessionPage = () => {
   const [timerSeconds, setTimerSeconds] = useState(0)
   const [isActive, setIsActive] = useState(false)
   const [isPaused, setIsPaused] = useState(false)
+  const [sessionId, setSessionId] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
 
-  const startSession = () => {
-    setTimerSeconds(0)
-    setIsActive(true)
-    setIsPaused(false)
+  const startSession = async () => {
+    // Basic client-side validation
+    if (!form.subject.trim()) {
+      setError('Subject is required')
+      return
+    }
+    if (!form.topic.trim()) {
+      setError('Topic is required')
+      return
+    }
+    if (form.durationMinutes < 5 || form.durationMinutes > 180) {
+      setError('Duration must be between 5 and 180 minutes')
+      return
+    }
+
+    setLoading(true)
+    setError(null)
+    try {
+      const response = await createSession({
+        subject: form.subject.trim(),
+        topic: form.topic.trim(),
+        duration_minutes: form.durationMinutes,
+        webcam_enabled: form.webcamEnabled,
+      })
+      setSessionId(response.id)
+      setTimerSeconds(0)
+      setIsActive(true)
+      setIsPaused(false)
+    } catch (err) {
+      setError(err.message || 'Failed to start session. Please try again.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   const pauseSession = () => {
@@ -70,8 +103,23 @@ const SessionPage = () => {
             <p className="text-sm text-slate-500">
               {isActive ? (isPaused ? 'Paused' : 'Active') : 'Idle'}
             </p>
+            {isActive && sessionId && (
+              <p className="text-xs text-slate-400">Session #{sessionId}</p>
+            )}
           </div>
         </div>
+
+        {error && (
+          <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-sm text-red-700 mb-3">{error}</p>
+            <button
+              onClick={startSession}
+              className="px-4 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition-colors"
+            >
+              Retry
+            </button>
+          </div>
+        )}
 
         <form onSubmit={(e) => e.preventDefault()} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -134,13 +182,14 @@ const SessionPage = () => {
             <Button
               variant="secondary"
               onClick={isActive ? (isPaused ? resumeSession : pauseSession) : startSession}
+              disabled={loading}
             >
-              {isActive ? (isPaused ? 'Resume Session' : 'Pause Session') : 'Start Session'}
+              {loading ? 'Starting...' : (isActive ? (isPaused ? 'Resume Session' : 'Pause Session') : 'Start Session')}
             </Button>
             <Button
               variant="ghost"
               onClick={endSession}
-              disabled={!isActive}
+              disabled={!isActive || loading}
             >
               End Session
             </Button>
