@@ -86,5 +86,34 @@ export async function createSession(sessionData) {
   })
 }
 
+/**
+ * Calendar endpoint.
+ *
+ * @param {number} month - Month (1-12, defaults to 9)
+ * @param {number} year - Year (defaults to 2026)
+ * @returns {Promise<CalendarResponse>} - Calendar data
+ */
+export async function getCalendar(month = 9, year = 2026) {
+  return request(`/api/calendar?month=${month}&year=${year}`)
+}
+
+/**
+ * History endpoint.
+ *
+ * @returns {Promise<HistoryResponse>} - Study session history data
+ */
+export async function getHistory() {
+  return request('/api/history')
+}
+
+/**
+ * Insights endpoint.
+ *
+ * @returns {Promise<InsightResponse>} - Insight data
+ */
+export async function getInsights() {
+  return request('/api/insights')
+}
+
 // Export the base request helper for future endpoints
 export { request }
