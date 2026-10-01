@@ -12,6 +12,9 @@ import HistoryPage from './pages/HistoryPage'
 import InsightsPage from './pages/InsightsPage'
 import SettingsPage from './pages/SettingsPage'
 
+// Development-only: exposes window.testBackendHealth() for Phase 3 testing
+import './utils/devHealthCheck'
+
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <Router>
