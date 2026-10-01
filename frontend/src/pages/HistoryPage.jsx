@@ -1,12 +1,12 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Search } from 'lucide-react'
-import { sessionsData } from '../data/demoData'
+import { getHistory } from '../services/api'
 
 // Resolved once at module scope so rendering stays pure and stable across re-renders
 const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
 
 const HistoryPage = () => {
-  const [sessions, setSessions] = useState(sessionsData)
+  const [sessions, setSessions] = useState([])
   const [filters, setFilters] = useState({
     subject: 'all',
     fatigue: 'all',
@@ -14,6 +14,26 @@ const HistoryPage = () => {
     search: '',
     sort: 'date-desc'
   })
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  // Fetch history data from API
+  useEffect(() => {
+    const fetchHistoryData = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+        const response = await getHistory()
+        setSessions(response.sessions)
+      } catch (err) {
+        setError(err.message || 'Unable to load history data. Please try again.')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchHistoryData()
+  }, [])
 
   const filteredSessions = sessions.filter(session => {
     // Subject filter
@@ -35,8 +55,8 @@ const HistoryPage = () => {
     return true
   }).sort((a, b) => {
     if (filters.sort === 'date-asc') return new Date(a.date).getTime() - new Date(b.date).getTime()
-    if (filters.sort === 'duration-asc') return parseInt(a.duration) - parseInt(b.duration)
-    if (filters.sort === 'duration-desc') return parseInt(b.duration) - parseInt(a.duration)
+    if (filters.sort === 'duration-asc') return a.duration - b.duration
+    if (filters.sort === 'duration-desc') return b.duration - a.duration
     // Default: date descending
     return new Date(b.date).getTime() - new Date(a.date).getTime()
   })
@@ -49,12 +69,46 @@ const HistoryPage = () => {
     setSessions(prev => prev.filter(session => session.id !== id))
   }
 
+  const handleRetry = () => {
+    setLoading(true)
+    setError(null)
+    getHistory()
+      .then(response => setSessions(response.sessions))
+      .catch(err => setError(err.message || 'Unable to load history data. Please try again.'))
+      .finally(() => setLoading(false))
+  }
+
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
       year: 'numeric'
     })
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="text-lg text-slate-600">Loading history...</div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto p-8">
+          <div className="text-lg text-slate-900 mb-4">Unable to load history</div>
+          <div className="text-sm text-slate-600 mb-6">{error}</div>
+          <button
+            onClick={handleRetry}
+            className="px-5 py-3 bg-slate-900 text-white rounded-lg font-medium transition-colors hover:bg-slate-800"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -82,7 +136,7 @@ const HistoryPage = () => {
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500"
               >
                 <option value="all">All Subjects</option>
-                {[...new Set(sessionsData.map(s => s.subject))].map((subject) => (
+                {[...new Set(sessions.map(s => s.subject))].map((subject) => (
                   <option key={subject} value={subject}>{subject}</option>
                 ))}
               </select>
@@ -162,7 +216,9 @@ const HistoryPage = () => {
           <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
             <h3 className="text-sm font-medium text-slate-600">Avg Duration</h3>
             <p className="text-2xl font-bold text-slate-900">
-              {Math.round(sessions.reduce((sum, s) => sum + parseInt(s.duration), 0) / sessions.length)} min
+              {sessions.length > 0
+                ? Math.round(sessions.reduce((sum, s) => sum + s.duration, 0) / sessions.length)
+                : 0} min
             </p>
           </div>
           <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
@@ -190,7 +246,7 @@ const HistoryPage = () => {
                     </div>
 
                     <div className="flex items-center gap-3 text-xs">
-                      <span>{session.duration}</span>
+                      <span>{session.duration} min</span>
                       <span className={`px-2 py-1 rounded-full ${session.fatigue === 'Low' ? 'bg-green-50 text-green-800' :
   session.fatigue === 'Medium' ? 'bg-yellow-50 text-yellow-800' : 'bg-red-50 text-red-800'}`}>{session.fatigue}</span>
                       <span className="px-2 py-1 rounded-full bg-slate-100 text-slate-600">{formatDate(session.date)}</span>
@@ -214,7 +270,7 @@ const HistoryPage = () => {
                   </div>
                   {session.id !== filteredSessions[filteredSessions.length - 1].id && (
                     <div className="mt-3 pt-3 border-t border-slate-200">
-                      <p className="text-xs text-slate-400">Session completed • {session.date}</p>
+                      <p className="text-xs text-slate-400">Session completed • {formatDate(session.date)}</p>
                     </div>
                   )}
                 </div>
