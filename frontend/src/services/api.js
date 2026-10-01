@@ -66,5 +66,25 @@ export async function getDashboard() {
   return request('/api/dashboard')
 }
 
+/**
+ * Create a new study session.
+ *
+ * @param {Object} sessionData - Session configuration
+ * @param {string} sessionData.subject - Subject of study
+ * @param {string} sessionData.topic - Topic being studied
+ * @param {number} sessionData.durationMinutes - Duration in minutes
+ * @param {boolean} sessionData.webcamEnabled - Enable webcam monitoring
+ * @returns {Promise<CreateSessionResponse>} - Created session data
+ */
+export async function createSession(sessionData) {
+  return request('/api/sessions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(sessionData),
+  })
+}
+
 // Export the base request helper for future endpoints
 export { request }

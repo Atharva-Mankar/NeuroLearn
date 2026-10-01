@@ -7,7 +7,7 @@ allows the local React frontend to talk to it, and exposes a simple
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import dashboard
+from app.routers import dashboard, sessions
 
 PROJECT_NAME = "NeuroLearn"
 VERSION = "0.1.0"
@@ -41,6 +41,7 @@ app.add_middleware(
 
 # Register routers
 app.include_router(dashboard.router)
+app.include_router(sessions.router)
 
 
 @app.get("/health")
