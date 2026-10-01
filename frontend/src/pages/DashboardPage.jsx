@@ -1,9 +1,70 @@
 import { useNavigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
 import { TrendingUp, Coffee, ChevronRight, Clock } from 'lucide-react'
-import { dashboardData } from '../data/demoData'
+import { getDashboard } from '../services/api'
 
 const DashboardPage = () => {
   const navigate = useNavigate()
+  const [dashboardData, setDashboardData] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    const fetchDashboard = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+        const data = await getDashboard()
+        setDashboardData(data)
+      } catch (err) {
+        setError(err.message || 'Unable to load dashboard data. Please try again.')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchDashboard()
+  }, [])
+
+  const handleRetry = () => {
+    setLoading(true)
+    setError(null)
+    getDashboard()
+      .then(data => setDashboardData(data))
+      .catch(err => setError(err.message || 'Unable to load dashboard data. Please try again.'))
+      .finally(() => setLoading(false))
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-lg text-slate-600">Loading dashboard...</div>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto p-8">
+          <div className="text-lg text-slate-900 mb-4">Unable to load dashboard</div>
+          <div className="text-sm text-slate-600 mb-6">{error}</div>
+          <button
+            onClick={handleRetry}
+            className="px-5 py-3 bg-slate-900 text-white rounded-lg font-medium transition-colors hover:bg-slate-800"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  if (!dashboardData) {
+    return null
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 p-4 md:p-8">
@@ -42,16 +103,16 @@ const DashboardPage = () => {
 
             <div className="text-center">
               <div className="text-3xl font-bold text-slate-900 mb-2">
-                {dashboardData.studyProgress.percentage}%
+                {dashboardData.study_progress.percentage}%
               </div>
               <div className="w-full bg-slate-100 rounded-full h-2.5 mb-2">
                 <div
                   className="bg-slate-900 h-2.5 rounded-full"
-                  style={{ width: `${dashboardData.studyProgress.percentage}%` }}
+                  style={{ width: `${dashboardData.study_progress.percentage}%` }}
                 />
               </div>
               <div className="text-sm text-slate-500">
-                {dashboardData.studyProgress.description}
+                {dashboardData.study_progress.description}
               </div>
             </div>
           </div>
@@ -61,24 +122,24 @@ const DashboardPage = () => {
             <div className="flex items-center justify-between mb-4">
               <Coffee size={20} className="text-slate-400" />
               <span className="text-sm font-medium text-slate-600">
-                {dashboardData.fatigueLevel.label}
+                {dashboardData.fatigue.label}
               </span>
             </div>
 
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className={`text-2xl font-bold ${dashboardData.fatigueLevel.value === 'Low' ? 'text-green-600' :
-                  dashboardData.fatigueLevel.value === 'Medium' ? 'text-yellow-600' : 'text-red-600'}
-                }`}>{dashboardData.fatigueLevel.level}</span>
-                <span className="text-xs text-slate-500">{dashboardData.fatigueLevel.label}</span>
+                <span className={`text-2xl font-bold ${dashboardData.fatigue.level === 'Low' ? 'text-green-600' :
+                  dashboardData.fatigue.level === 'Medium' ? 'text-yellow-600' : 'text-red-600'}
+                }`}>{dashboardData.fatigue.level}</span>
+                <span className="text-xs text-slate-500">{dashboardData.fatigue.label}</span>
               </div>
-              <div className={`px-3 py-1 rounded-full text-xs font-medium ${dashboardData.fatigueLevel.value === 'Low' ? 'bg-green-50 text-green-700' :
-                dashboardData.fatigueLevel.value === 'Medium' ? 'bg-yellow-50 text-yellow-700' : 'bg-red-50 text-red-700'}
-              `}>{dashboardData.fatigueLevel.level}</div>
+              <div className={`px-3 py-1 rounded-full text-xs font-medium ${dashboardData.fatigue.level === 'Low' ? 'bg-green-50 text-green-700' :
+                dashboardData.fatigue.level === 'Medium' ? 'bg-yellow-50 text-yellow-700' : 'bg-red-50 text-red-700'}
+              `}>{dashboardData.fatigue.level}</div>
             </div>
 
             <div className="mt-4 pt-4 border-t border-slate-200">
-              <p className="text-xs text-slate-500 italic">{dashboardData.fatigueLevel.disclaimer}</p>
+              <p className="text-xs text-slate-500 italic">{dashboardData.fatigue.disclaimer}</p>
             </div>
           </div>
 
@@ -92,7 +153,7 @@ const DashboardPage = () => {
             </div>
 
             <div className="space-y-3">
-              {dashboardData.timeline.map((item) => (
+              {dashboardData.today_timeline.map((item) => (
                 <div key={item.time} className="flex items-center gap-3">
                   <span className="text-xs font-medium text-slate-500 w-12">{item.time}</span>
                   <div className="flex-1">
@@ -110,7 +171,7 @@ const DashboardPage = () => {
           <h2 className="text-xl font-semibold text-slate-900 mb-6">Recent Sessions</h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {dashboardData.recentSessions.map((session) => (
+            {dashboardData.recent_sessions.map((session) => (
               <div key={session.subject} className="border border-slate-200 rounded-lg p-4">
                 <div className="flex justify-between items-start mb-2">
                   <span className="text-sm font-medium text-slate-800">{session.subject}</span>
@@ -131,7 +192,7 @@ const DashboardPage = () => {
           <h2 className="text-xl font-semibold text-slate-900 mb-6">Adaptive Suggestions</h2>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {dashboardData.suggestions.map((suggestion) => (
+            {dashboardData.adaptive_suggestions.map((suggestion) => (
               <div key={suggestion.title} className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
                 <div className="flex items-start gap-3">
                   <Coffee size={20} className="text-slate-400 flex-shrink-0 mt-1" />
@@ -152,7 +213,7 @@ const DashboardPage = () => {
             {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
               <div key={day} className="text-center text-xs font-medium text-slate-600 py-2">{day}</div>
             ))}
-            {dashboardData.calendarPreview.map((day) => (
+            {dashboardData.calendar_preview.map((day) => (
               <div key={day.date} className="h-10 flex items-center justify-center">
                 <span className="text-sm text-slate-800">{day.date.split('-')[2]}</span>
                 {day.sessions > 0 && (
