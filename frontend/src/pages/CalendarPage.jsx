@@ -1,22 +1,70 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Plus } from 'lucide-react'
-import { calendarEvents } from '../data/demoData'
+import { getCalendar } from '../services/api'
 
 // Resolved once at module scope so rendering stays pure and stable across
 // re-renders — the calendar grid and the "today" filter must agree.
 const today = new Date()
-const currentMonth = today.getMonth()
-const currentYear = today.getFullYear()
-const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate()
-const firstDayIndex = new Date(currentYear, currentMonth, 1).getDay()
 
 const CalendarPage = () => {
+  const currentMonth = today.getMonth()
+  const currentYear = today.getFullYear()
   const [selectedDate, setSelectedDate] = useState(null)
   const [showAddModal, setShowAddModal] = useState(false)
-  const [events, setEvents] = useState(calendarEvents)
+  const [calendarDays, setCalendarDays] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
-  const getEventsForDate = (date) => {
-    return events.filter(event => event.date === date)
+  // Fetch calendar data from API
+  useEffect(() => {
+    const fetchCalendarData = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+        const response = await getCalendar(currentMonth + 1, currentYear) // API expects 1-12
+        setCalendarDays(response.days)
+      } catch (err) {
+        setError(err.message || 'Unable to load calendar data. Please try again.')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchCalendarData()
+  }, [currentMonth, currentYear])
+
+  const handleRetry = () => {
+    setLoading(true)
+    setError(null)
+    getCalendar(currentMonth + 1, currentYear)
+      .then(response => setCalendarDays(response.days))
+      .catch(err => setError(err.message || 'Unable to load calendar data. Please try again.'))
+      .finally(() => setLoading(false))
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="text-lg text-slate-600">Loading calendar...</div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto p-8">
+          <div className="text-lg text-slate-900 mb-4">Unable to load calendar</div>
+          <div className="text-sm text-slate-600 mb-6">{error}</div>
+          <button
+            onClick={handleRetry}
+            className="px-5 py-3 bg-slate-900 text-white rounded-lg font-medium transition-colors hover:bg-slate-800"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    )
   }
 
   const handleAddEvent = () => {
@@ -25,10 +73,6 @@ const CalendarPage = () => {
 
   const handleCloseModal = () => {
     setShowAddModal(false)
-  }
-
-  const handleDeleteEvent = (id) => {
-    setEvents(prev => prev.filter(event => event.id !== id))
   }
 
   return (
@@ -148,74 +192,76 @@ const CalendarPage = () => {
           </div>
 
           <div className="grid grid-cols-7 gap-2">
-            {/* Empty cells for days before month start */}
-            {Array(firstDayIndex).fill(null).map((_, i) => (
-              <div key={`empty-${i}`} className="h-12" />
-            ))}
+            {/* Calculate first day index and days in month */}
+            {(() => {
+              const firstDayIndex = new Date(currentYear, currentMonth, 1).getDay();
+              const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
 
-            {/* Days of the month */}
-            {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((day) => {
-              const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-              const dayEvents = getEventsForDate(dateStr)
-              const hasEvents = dayEvents.length > 0
-              const totalMinutes = dayEvents.reduce((sum, event) => {
-                const start = event.startTime.split(':').map(Number)
-                const end = event.endTime.split(':').map(Number)
-                const duration = (end[0] * 60 + end[1]) - (start[0] * 60 + start[1])
-                return sum + duration
-              }, 0)
+              // Empty cells for days before month start
+              const emptyCells = Array(firstDayIndex).fill(null).map((_, i) => (
+                <div key={`empty-${i}`} className="h-12" />
+              ));
 
-              return (
-                <div key={dateStr} className={`
-                  min-h-12 flex flex-col items-center justify-center rounded-md
-                  ${hasEvents ? 'bg-slate-50 hover:bg-slate-100' : 'hover:bg-slate-50'}
-                  transition-colors cursor-pointer relative
-                `}>
-                  <div className="text-xs font-medium text-slate-800">{day}</div>
-                  {hasEvents && (
-                    <div className="flex items-center gap-1 mt-1 text-xs">
-                      <div className="w-2 h-2 bg-slate-600 rounded-full" />
-                      <span className="text-slate-600">{dayEvents.length}</span>
-                    </div>
-                  )}
-                  {totalMinutes > 0 && (
-                    <div className="mt-1 text-xs text-slate-500">
-                      {totalMinutes} min
-                    </div>
-                  )}
-                </div>
-              )
-            })}
+              // Days of the month
+              const dayCells = Array.from({ length: daysInMonth }, (_, i) => i + 1).map((day) => {
+                const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                // Find matching day from API data
+                const apiDay = calendarDays.find(d => d.date === dateStr);
+                const hasEvents = apiDay && apiDay.sessions > 0;
+                const totalMinutes = apiDay ? apiDay.total_duration : 0;
+
+                return (
+                  <div key={dateStr} className={`
+                    min-h-12 flex flex-col items-center justify-center rounded-md
+                    ${hasEvents ? 'bg-slate-50 hover:bg-slate-100' : 'hover:bg-slate-50'}
+                    transition-colors cursor-pointer relative
+                  `}>
+                    <div className="text-xs font-medium text-slate-800">{day}</div>
+                    {hasEvents && (
+                      <div className="flex items-center gap-1 mt-1 text-xs">
+                        <div className="w-2 h-2 bg-slate-600 rounded-full" />
+                        <span className="text-slate-600">${apiDay.sessions}</span>
+                      </div>
+                    )}
+                    {totalMinutes > 0 && (
+                      <div className="mt-1 text-xs text-slate-500">
+                        {totalMinutes} min
+                      </div>
+                    )}
+                  </div>
+                );
+              });
+
+              return [...emptyCells, ...dayCells];
+            })()}
           </div>
         </div>
 
         {/* Events List */}
         <div className="mt-8">
-          <h2 className="text-xl font-semibold text-slate-900 mb-4">Today's Events</h2>
+          <h2 className="text-xl font-semibold text-slate-900 mb-4">Today's Sessions</h2>
           <div className="space-y-4">
-            {events
-              .filter(event => {
-                const eventDate = new Date(event.date)
-                return eventDate.toDateString() === today.toDateString()
+            {calendarDays
+              .filter(day => {
+                const dayDate = new Date(day.date)
+                return dayDate.toDateString() === today.toDateString()
               })
-              .map((event) => (
-                <div key={event.id} className="flex items-center gap-3 px-4 py-3 bg-slate-50 rounded-lg">
+              .map((day) => (
+                <div key={day.date} className="flex items-center gap-3 px-4 py-3 bg-slate-50 rounded-lg">
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-slate-900">{event.title}</p>
-                    <p className="text-xs text-slate-500">{event.title}</p>
+                    <p className="text-sm font-medium text-slate-900">
+                      Study Session
+                    </p>
+                    {day.subjects.length > 0 && (
+                      <p className="text-xs text-slate-500">
+                        {day.subjects.join(', ')}
+                      </p>
+                    )}
                   </div>
                   <div className="flex items-center gap-2 text-xs text-slate-600">
-                    <span>{event.startTime} - {event.endTime}</span>
+                    <span>{day.sessions} session{(day.sessions !== 1 && 's')}</span>
+                    <span>{day.total_duration} min</span>
                   </div>
-                  <button
-                    onClick={() => handleDeleteEvent(event.id)}
-                    className="p-1 rounded hover:bg-slate-200 text-slate-400 hover:text-slate-600"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="3 6 5 6 21 6"></polyline>
-                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                    </svg>
-                  </button>
                 </div>
               ))}
           </div>
