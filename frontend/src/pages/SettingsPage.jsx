@@ -18,7 +18,6 @@ const SettingsPage = () => {
   const handleSubmit = (e) => {
     e.preventDefault()
     // Future phase: save to backend
-    console.log('Settings saved:', formData)
   }
 
   return (
