@@ -1,6 +1,30 @@
 import { TrendingUp, Activity, Clock, PieChart } from 'lucide-react'
 import { insightsData } from '../data/demoData'
 
+const FATIGUE_COLORS = {
+  low: 'bg-green-500',
+  medium: 'bg-yellow-500',
+  high: 'bg-red-500',
+}
+
+const fatigueBand = (level) => {
+  if (level < 40) return 'low'
+  if (level < 50) return 'medium'
+  return 'high'
+}
+
+const SUBJECT_COLORS = {
+  'Machine Learning': 'bg-blue-500',
+  'Data Science': 'bg-green-500',
+  'Mathematics': 'bg-yellow-500',
+  'Computer Vision': 'bg-purple-500',
+  'Statistics': 'bg-red-500',
+  'Deep Learning': 'bg-pink-500',
+  'Natural Language Processing': 'bg-indigo-500',
+  'Reinforcement Learning': 'bg-teal-500',
+  'Other': 'bg-slate-500',
+}
+
 const InsightsPage = () => {
   return (
     <div className="min-h-screen bg-slate-50 p-4 md:p-8">
@@ -80,16 +104,20 @@ const InsightsPage = () => {
                 {/* Simple line chart using divs */}
                 <div className="absolute inset-0 pointer-events-none">
                   <div className="flex h-full items-end justify-between space-x-1">
-                    {insightsData.fatigueTrend.map((point, index) => (
-                      <div key={index} className="relative">
-                        <div className={`w-2 bg-${point.level < 40 ? 'green-500' : point.level < 50 ? 'yellow-500' : 'red-500'}`}
-                          style={{ height: `${(point.level / 100) * 100}%` }}
-                        />
-                        <div className="absolute bottom-full mb-1 text-xs text-slate-500">
-                          {insightsData.fatigueTrend[index].day}
+                    {insightsData.fatigueTrend.map((point, index) => {
+                      const bgColor = FATIGUE_COLORS[fatigueBand(point.level)]
+
+                      return (
+                        <div key={index} className="relative">
+                          <div className={`w-2 ${bgColor}`}
+                            style={{ height: `${(point.level / 100) * 100}%` }}
+                          />
+                          <div className="absolute bottom-full mb-1 text-xs text-slate-500">
+                            {insightsData.fatigueTrend[index].day}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
                 <div className="absolute inset-0 pointer-events-none flex items-end justify-between text-xs text-slate-400">
@@ -111,7 +139,7 @@ const InsightsPage = () => {
                 <div key={item.subject} className="flex items-center gap-3">
                   <div className="w-20 h-4 bg-slate-200 rounded-full relative">
                     <div
-                      className={`h-4 bg-${item.color} rounded-full`}
+                      className={`h-4 rounded-full ${SUBJECT_COLORS[item.subject]}`}
                       style={{ width: `${(item.hours / Math.max(...insightsData.subjectDistribution.map(d => d.hours))) * 100}%` }}
                     />
                   </div>
