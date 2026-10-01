@@ -38,3 +38,50 @@ build/
 .idea/
 .DS_Store
 Thumbs.db
+# Node.js
+node_modules/
+frontend/node_modules/
+npm-debug.log*
+
+# Python virtual environments
+.venv/
+backend/.venv/
+venv/
+env/
+
+# Python cache and compiled files
+__pycache__/
+*.py[cod]
+*.pyc
+.pytest_cache/
+.mypy_cache/
+
+# Environment variables and secrets
+.env
+.env.local
+*.env
+!.env.example
+
+# Local database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Build output
+dist/
+frontend/dist/
+build/
+*.egg-info/
+
+# Editor and operating system files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Runtime artifacts
+*.pid
+*.log
+*.bak
+test-phase3-task2.js
+
