@@ -57,5 +57,14 @@ export async function getHealth() {
   return request('/health')
 }
 
+/**
+ * Dashboard endpoint.
+ *
+ * @returns {Promise<DashboardResponse>} - Dashboard data for the current user
+ */
+export async function getDashboard() {
+  return request('/api/dashboard')
+}
+
 // Export the base request helper for future endpoints
 export { request }
