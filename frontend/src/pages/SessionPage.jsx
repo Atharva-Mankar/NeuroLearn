@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
-import { subjects, fatigueDisclaimer } from '../data/demoData'
 import Button from '../components/ui/Button'
-import { createSession } from '../services/api'
+import { createSession, completeSession } from '../services/api'
+import { fatigueDisclaimer, subjects as SUBJECTS } from '../constants'
 
 const SessionPage = () => {
   const [form, setForm] = useState({
-    subject: subjects[0],
+    subject: SUBJECTS[0],
     topic: '',
     durationMinutes: 45,
     webcamEnabled: false,
@@ -60,10 +60,27 @@ const SessionPage = () => {
     setIsPaused(false)
   }
 
-  const endSession = () => {
-    setIsActive(false)
-    setIsPaused(false)
-    alert('Session ended - saving logic will be added in a later phase.')
+  const endSession = async () => {
+    if (!sessionId) {
+      setIsActive(false)
+      setIsPaused(false)
+      return
+    }
+
+    setLoading(true)
+    setError(null)
+    try {
+      // Update the SAME database record created when the session started,
+      // rather than inserting a second row.
+      await completeSession(sessionId)
+      setSessionId(null)
+      setIsActive(false)
+      setIsPaused(false)
+    } catch (err) {
+      setError(err.message || 'Failed to save the completed session.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => {
@@ -131,7 +148,7 @@ const SessionPage = () => {
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500"
                 required
               >
-                {subjects.map(subject => (
+                {SUBJECTS.map(subject => (
                   <option key={subject} value={subject}>{subject}</option>
                 ))}
               </select>

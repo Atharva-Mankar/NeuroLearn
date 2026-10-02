@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { User, Clock, Video } from 'lucide-react'
-import { settingsData } from '../data/demoData'
+import { settingsData } from '../settingsDefaults'
 
 const SettingsPage = () => {
   const [formData, setFormData] = useState(settingsData)

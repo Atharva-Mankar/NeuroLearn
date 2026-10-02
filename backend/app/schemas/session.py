@@ -38,7 +38,8 @@ class CreateSessionResponse(BaseModel):
     id: int
     subject: str
     topic: str
-    planned_duration: int  # in minutes
+    planned_duration: int  # in minutes -- what the user asked for
+    actual_duration: int | None = None  # in minutes -- real elapsed time, null while active
     status: str = "active"
     start_time: str  # ISO format timestamp string
     webcam_monitoring: bool
@@ -47,4 +48,6 @@ class CreateSessionResponse(BaseModel):
 class SessionHealthResponse(BaseModel):
     """Simple session health check response."""
     is_active: bool
+    # Seconds the session has been running. For an active session this is
+    # measured live from started_at; for a finished one it is the stored total.
     elapsed_seconds: int

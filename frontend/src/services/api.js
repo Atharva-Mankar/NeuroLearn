@@ -5,8 +5,25 @@
  * handling stay consistent. Uses the browser's native fetch API.
  */
 
+import { STORAGE_KEY } from '../context/authContextObject'
+
 // Backend base URL - update this when deploying to production
 const API_BASE_URL = 'http://127.0.0.1:8000'
+
+// Get current user ID from localStorage (temporary identity mechanism)
+function getCurrentUserId() {
+  const storedUser = localStorage.getItem(STORAGE_KEY);
+  if (storedUser) {
+    try {
+      const parsed = JSON.parse(storedUser);
+      return parsed.id;
+    } catch (err) {
+      console.warn('Failed to parse auth data from localStorage', err);
+      return null;
+    }
+  }
+  return null;
+}
 
 /**
  * Generic request helper that handles errors and JSON parsing.
@@ -19,13 +36,28 @@ const API_BASE_URL = 'http://127.0.0.1:8000'
 async function request(endpoint, options = {}) {
   const url = `${API_BASE_URL}${endpoint}`
 
+  // Merge caller-supplied headers with the default Content-Type, then apply the
+  // temporary identity header LAST so that caller options can never accidentally
+  // overwrite it. (Previously `...options` was spread after `headers`, which let
+  // options.headers clobber X-User-Id.)
+  const headers = {
+    'Content-Type': 'application/json',
+    ...options.headers,
+  }
+
+  const userId = getCurrentUserId()
+  if (userId && !endpoint.startsWith('/api/auth/')) {
+    headers['X-User-Id'] = userId
+  }
+
+  // Strip `headers` out of options so the merged headers above are the only
+  // source of truth for the fetch call.
+  const { headers: _callerHeaders, ...fetchOptions } = options
+
   try {
     const response = await fetch(url, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
-      ...options,
+      headers,
+      ...fetchOptions,
     })
 
     // Check if the response is successful (status 200-299)
@@ -83,6 +115,23 @@ export async function createSession(sessionData) {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(sessionData),
+  })
+}
+
+/**
+ * Mark a study session as completed.
+ *
+ * Updates the existing record in place rather than creating a new one.
+ *
+ * @param {number} sessionId - The ID of the session to complete
+ * @returns {Promise<CreateSessionResponse>} - Updated session data
+ */
+export async function completeSession(sessionId) {
+  return request(`/api/sessions/${sessionId}/complete`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
   })
 }
 
