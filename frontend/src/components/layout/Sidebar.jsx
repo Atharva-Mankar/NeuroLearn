@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom'
+import { NavLink, useNavigate } from 'react-router-dom'
 import {
   Brain,
   LayoutDashboard,
@@ -9,6 +9,7 @@ import {
   Settings,
   LogOut,
 } from 'lucide-react'
+import { useAuth } from '../../context/AuthContext'
 
 /**
  * The list of pages in the left sidebar.
@@ -31,6 +32,16 @@ const NAV_ITEMS = [
  * the parent Layout so the Navbar can open and close it.
  */
 const Sidebar = ({ isOpen, onClose }) => {
+  const { logout } = useAuth()
+  const navigate = useNavigate()
+
+  // Clears the stored user object and returns to the login page.
+  const handleLogout = () => {
+    logout()
+    onClose()
+    navigate('/login')
+  }
+
   return (
     <>
       {/* On mobile, a dark overlay appears behind the sidebar so it is clear
@@ -84,13 +95,11 @@ const Sidebar = ({ isOpen, onClose }) => {
 
         {/* Logout + version */}
         <div className="border-t border-slate-200 p-3">
-          {/* Logout is a placeholder in this phase. It does not sign anyone out
-              yet because real authentication is not built. */}
+          {/* Signs out of the frontend auth state and returns to /login. This is
+              not backend session logout — no token or session exists yet. */}
           <button
             type="button"
-            onClick={() => {
-              alert('Logout will be available when authentication is built.')
-            }}
+            onClick={handleLogout}
             className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
           >
             <LogOut size={18} className="shrink-0" />

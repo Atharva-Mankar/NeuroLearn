@@ -2,12 +2,14 @@ import { useNavigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import { TrendingUp, Coffee, ChevronRight, Clock } from 'lucide-react'
 import { getDashboard } from '../services/api'
+import { useAuth } from '../context/AuthContext'
 
 const DashboardPage = () => {
   const navigate = useNavigate()
   const [dashboardData, setDashboardData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const { user } = useAuth()
 
   useEffect(() => {
     const fetchDashboard = async () => {
@@ -15,6 +17,9 @@ const DashboardPage = () => {
         setLoading(true)
         setError(null)
         const data = await getDashboard()
+        if (data && user) {
+          data.user = { id: user.id, name: user.name, email: user.email }
+        }
         setDashboardData(data)
       } catch (err) {
         setError(err.message || 'Unable to load dashboard data. Please try again.')
@@ -24,13 +29,18 @@ const DashboardPage = () => {
     }
 
     fetchDashboard()
-  }, [])
+  }, [user])
 
   const handleRetry = () => {
     setLoading(true)
     setError(null)
     getDashboard()
-      .then(data => setDashboardData(data))
+      .then(data => {
+        if (data && user) {
+          data.user = { id: user.id, name: user.name, email: user.email }
+        }
+        setDashboardData(data)
+      })
       .catch(err => setError(err.message || 'Unable to load dashboard data. Please try again.'))
       .finally(() => setLoading(false))
   }

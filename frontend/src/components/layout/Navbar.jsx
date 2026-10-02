@@ -1,6 +1,6 @@
 import { Menu, CalendarDays, PlayCircle } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { demoUser } from '../../data/demoData'
+import { useAuth } from '../../context/AuthContext'
 
 /**
  * Navbar = the thin bar across the top of every signed-in page.
@@ -8,9 +8,9 @@ import { demoUser } from '../../data/demoData'
  * It holds the mobile menu button, a short page title, and a small avatar.
  */
 const Navbar = ({ title, onMenuClick }) => {
-  // "Atharva" -> "A". This is only a placeholder until a real profile picture
-  // comes from the backend.
-  const initials = demoUser.name.charAt(0).toUpperCase()
+  const { user } = useAuth()
+  // Fallback initials in case user object is missing name (should not happen)
+  const initials = user?.name?.charAt(0).toUpperCase() ?? '?'
 
   return (
     <header className="sticky top-0 z-20 flex h-16 items-center gap-4 border-b border-slate-200 bg-white/80 px-4 backdrop-blur md:px-8">
@@ -47,7 +47,7 @@ const Navbar = ({ title, onMenuClick }) => {
 
       <span
         className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-200 text-sm font-semibold text-slate-700"
-        title={demoUser.email}
+        title={user?.email}
       >
         {initials}
       </span>

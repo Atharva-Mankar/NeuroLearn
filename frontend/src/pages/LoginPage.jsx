@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { LogIn, Mail, Lock } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
-import { login } from '../services/api'
+import { useAuth } from '../context/AuthContext'
 
 const LoginPage = () => {
   const [email, setEmail] = useState('')
@@ -9,6 +9,7 @@ const LoginPage = () => {
   const [error, setError] = useState(null)
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
+  const { login: loginUser } = useAuth()
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -20,9 +21,9 @@ const LoginPage = () => {
     setLoading(true)
 
     try {
-      await login({ email, password })
-      // Credentials are valid. No session/JWT yet — just navigate to the
-      // dashboard. This does NOT create persistent authentication state.
+      await loginUser(email, password)
+      // Credentials are valid. No session/JWT yet — AuthContext persists the
+      // safe user object and navigates. This does NOT create backend auth.
       navigate('/dashboard')
     } catch (err) {
       if (err.message.includes('Network error')) {
