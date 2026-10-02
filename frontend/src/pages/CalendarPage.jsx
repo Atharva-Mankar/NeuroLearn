@@ -7,9 +7,9 @@ import { getCalendar } from '../services/api'
 const today = new Date()
 
 const CalendarPage = () => {
-  const currentMonth = today.getMonth()
-  const currentYear = today.getFullYear()
-  const [selectedDate, setSelectedDate] = useState(null)
+  const [currentMonth, setCurrentMonth] = useState(today.getMonth())
+  const [currentYear, setCurrentYear] = useState(today.getFullYear())
+  // Removed unused date selection state (modal now disabled)
   const [showAddModal, setShowAddModal] = useState(false)
   const [calendarDays, setCalendarDays] = useState([])
   const [loading, setLoading] = useState(true)
@@ -32,6 +32,24 @@ const CalendarPage = () => {
 
     fetchCalendarData()
   }, [currentMonth, currentYear])
+
+  const handlePreviousMonth = () => {
+    if (currentMonth === 0) {
+      setCurrentMonth(11)
+      setCurrentYear(prev => prev - 1)
+    } else {
+      setCurrentMonth(prev => prev - 1)
+    }
+  }
+
+  const handleNextMonth = () => {
+    if (currentMonth === 11) {
+      setCurrentMonth(0)
+      setCurrentYear(prev => prev + 1)
+    } else {
+      setCurrentMonth(prev => prev + 1)
+    }
+  }
 
   const handleRetry = () => {
     setLoading(true)
@@ -91,68 +109,27 @@ const CalendarPage = () => {
           </div>
         </div>
 
-        {/* Event Modal */}
+        {/* Event Modal - Marked as unavailable */}
         {showAddModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-xl p-8 w-full max-w-md space-y-6">
               <h2 className="text-xl font-bold text-slate-900">Add Study Task</h2>
-              <form className="space-y-4">
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-slate-700">Subject</label>
-                  <select className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500">
-                    <option value="">Select subject</option>
-                    <option value="Machine Learning">Machine Learning</option>
-                    <option value="Data Science">Data Science</option>
-                    <option value="Mathematics">Mathematics</option>
-                    <option value="Computer Vision">Computer Vision</option>
-                    <option value="Statistics">Statistics</option>
-                    <option value="Other">Other</option>
-                  </select>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-slate-700">Date</label>
-                  <input
-                    type="date"
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500"
-                    value={selectedDate || ''}
-                    onChange={(e) => setSelectedDate(e.target.value)}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-slate-700">Start Time</label>
-                  <input
-                    type="time"
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-slate-700">End Time</label>
-                  <input
-                    type="time"
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500"
-                  />
-                </div>
-
-                <div className="flex justify-end space-x-3">
-                  <button
-                    type="button"
-                    onClick={handleCloseModal}
-                    className="px-4 py-2 border border-slate-300 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleCloseModal}
-                    className="px-4 py-2 bg-slate-900 text-white rounded-lg text-sm font-medium hover:bg-slate-800 transition-colors"
-                  >
-                    Save Task
-                  </button>
-                </div>
-              </form>
+              <div className="bg-slate-50 p-6 rounded">
+                <p className="text-sm text-slate-600">
+                  Study task scheduling is not yet implemented in this version.
+                  The calendar displays real study sessions from your history,
+                  but manual session creation will be available in a future update.
+                </p>
+              </div>
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={handleCloseModal}
+                  className="px-4 py-2 bg-slate-900 text-white rounded-lg text-sm font-medium hover:bg-slate-800 transition-colors"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -166,7 +143,7 @@ const CalendarPage = () => {
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => {/* Previous month - placeholder */}}
+                onClick={handlePreviousMonth}
                 className="p-2 rounded hover:bg-slate-100 text-slate-500"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -175,7 +152,7 @@ const CalendarPage = () => {
               </button>
               <button
                 type="button"
-                onClick={() => {/* Next month - placeholder */}}
+                onClick={handleNextMonth}
                 className="p-2 rounded hover:bg-slate-100 text-slate-500"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

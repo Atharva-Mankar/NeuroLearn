@@ -78,3 +78,31 @@ class LoginResponse(BaseModel):
 class MessageResponse(BaseModel):
     """Generic message response."""
     message: str
+
+
+class ProfileResponse(BaseModel):
+    """Response model for the signed-in user's own profile.
+
+    Carries only safe fields. password and password_hash are deliberately
+    absent so they cannot be leaked by response serialization.
+    """
+    id: int = Field(..., description="User ID")
+    name: str = Field(..., description="User's current display name")
+    email: str = Field(..., description="User's email address (the login identifier)")
+    created_at: str = Field(..., description="ISO timestamp of when the account was created")
+
+
+class UpdateProfileRequest(BaseModel):
+    """Request model for editing the signed-in user's own profile.
+
+    Only ``name`` is editable. ``email`` is the login identifier and is
+    deliberately not changeable here: changing it would require re-verifying
+    ownership of the new address, which this phase does not do.
+    """
+    name: str = Field(..., min_length=1, max_length=100, description="New display name")
+
+    @validator('name')
+    def name_must_not_be_empty(cls, v):
+        if not v or not v.strip():
+            raise ValueError('Name must not be empty')
+        return v.strip()

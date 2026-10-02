@@ -138,11 +138,17 @@ export async function completeSession(sessionId) {
 /**
  * Calendar endpoint.
  *
- * @param {number} month - Month (1-12, defaults to 9)
- * @param {number} year - Year (defaults to 2026)
+ * @param {number} [month] - Month (1-12, defaults to current month)
+ * @param {number} [year] - Year (defaults to current year)
  * @returns {Promise<CalendarResponse>} - Calendar data
  */
-export async function getCalendar(month = 9, year = 2026) {
+export async function getCalendar(month, year) {
+  // If month/year not provided, use current month/year
+  if (month === undefined || year === undefined) {
+    const now = new Date()
+    month = month === undefined ? now.getMonth() + 1 : month // API expects 1-12
+    year = year === undefined ? now.getFullYear() : year
+  }
   return request(`/api/calendar?month=${month}&year=${year}`)
 }
 
@@ -198,6 +204,32 @@ export async function login(credentials) {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(credentials),
+  })
+}
+
+/**
+ * Get current user's profile.
+ *
+ * @returns {Promise<{id: number, name: string, email: string, created_at: string}>}
+ */
+export async function getProfile() {
+  return request('/api/users/me')
+}
+
+/**
+ * Update current user's profile (name only).
+ *
+ * @param {Object} profileData - Profile update data
+ * @param {string} profileData.name - New name
+ * @returns {Promise<{id: number, name: string, email: string, created_at: string}>}
+ */
+export async function updateProfile(profileData) {
+  return request('/api/users/me', {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(profileData),
   })
 }
 

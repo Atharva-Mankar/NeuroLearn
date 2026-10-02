@@ -7,7 +7,7 @@ allows the local React frontend to talk to it, and exposes a simple
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import dashboard, sessions, calendar, history, insights, auth
+from app.routers import dashboard, sessions, calendar, history, insights, auth, users
 from app.database.connection import create_database
 from app.core.config import get_settings
 
@@ -49,6 +49,7 @@ app.include_router(calendar.router)
 app.include_router(history.router)
 app.include_router(insights.router)
 app.include_router(auth.router)
+app.include_router(users.router)
 
 # Initialize database on startup
 create_database()

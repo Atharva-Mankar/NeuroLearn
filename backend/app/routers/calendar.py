@@ -1,95 +1,113 @@
-"""
-Calendar API router.
+"""Calendar API router.
 
-Returns structured calendar/session information suitable for the CalendarPage.
-In-memory demo data - would be replaced with database queries later.
-"""
-from fastapi import APIRouter
-from app.schemas.calendar import CalendarResponse, CalendarDay
-from datetime import datetime, timedelta
+Returns a per-day summary of the current user's real study sessions for one
+month, queried from the database.
 
+Timestamps are stored as naive UTC (see ``StudySession.started_at``) but grouped
+by the *local* calendar date, matching the dates the user actually sees. Grouping
+in UTC would push a late-evening session onto the wrong day for anyone east of
+UTC. The helpers for that conversion live in ``app/routers/dashboard.py`` and are
+reused rather than reimplemented.
+"""
+
+from datetime import date, datetime, time, timedelta, timezone
+
+from fastapi import APIRouter, Depends, Query
+from sqlalchemy.orm import Session
+
+from app.core.current_user import get_current_user
+from app.database.connection import get_db
+from app.models import StudySession, User
+from app.routers.dashboard import _local_date
+from app.schemas.calendar import CalendarDay, CalendarResponse
 
 router = APIRouter(prefix="/api", tags=["calendar"])
 
-# Demo calendar data - 30 days ending today
-# In production, this would query a database
 
-# September 2026 data (30 days)
-_september_2026 = [
-    {"date": datetime(2026, 9, 1).date(), "sessions": 1, "subjects": ["Mathematics"], "total_duration": 45},
-    {"date": datetime(2026, 9, 2).date(), "sessions": 0, "subjects": [], "total_duration": 0},
-    {"date": datetime(2026, 9, 3).date(), "sessions": 2, "subjects": ["Physics", "Chemistry"], "total_duration": 90},
-    {"date": datetime(2026, 9, 4).date(), "sessions": 1, "subjects": ["Mathematics"], "total_duration": 45},
-    {"date": datetime(2026, 9, 5).date(), "sessions": 0, "subjects": [], "total_duration": 0},
-    {"date": datetime(2026, 9, 6).date(), "sessions": 1, "subjects": ["Biology"], "total_duration": 60},
-    {"date": datetime(2026, 9, 7).date(), "sessions": 0, "subjects": [], "total_duration": 0},
-    {"date": datetime(2026, 9, 8).date(), "sessions": 2, "subjects": ["Mathematics", "Physics"], "total_duration": 80},
-    {"date": datetime(2026, 9, 9).date(), "sessions": 1, "subjects": ["Chemistry"], "total_duration": 50},
-    {"date": datetime(2026, 9, 10).date(), "sessions": 0, "subjects": [], "total_duration": 0},
-    {"date": datetime(2026, 9, 11).date(), "sessions": 1, "subjects": ["Mathematics"], "total_duration": 45},
-    {"date": datetime(2026, 9, 12).date(), "sessions": 0, "subjects": [], "total_duration": 0},
-    {"date": datetime(2026, 9, 13).date(), "sessions": 2, "subjects": ["Physics", "Biology"], "total_duration": 100},
-    {"date": datetime(2026, 9, 14).date(), "sessions": 1, "subjects": ["Chemistry"], "total_duration": 55},
-    {"date": datetime(2026, 9, 15).date(), "sessions": 0, "subjects": [], "total_duration": 0},
-    {"date": datetime(2026, 9, 16).date(), "sessions": 1, "subjects": ["Mathematics"], "total_duration": 40},
-    {"date": datetime(2026, 9, 17).date(), "sessions": 0, "subjects": [], "total_duration": 0},
-    {"date": datetime(2026, 9, 18).date(), "sessions": 2, "subjects": ["Physics", "Chemistry"], "total_duration": 95},
-    {"date": datetime(2026, 9, 19).date(), "sessions": 1, "subjects": ["Mathematics"], "total_duration": 50},
-    {"date": datetime(2026, 9, 20).date(), "sessions": 0, "subjects": [], "total_duration": 0},
-    {"date": datetime(2026, 9, 21).date(), "sessions": 1, "subjects": ["Biology"], "total_duration": 65},
-    {"date": datetime(2026, 9, 22).date(), "sessions": 0, "subjects": [], "total_duration": 0},
-    {"date": datetime(2026, 9, 23).date(), "sessions": 2, "subjects": ["Mathematics", "Physics"], "total_duration": 85},
-    {"date": datetime(2026, 9, 24).date(), "sessions": 1, "subjects": ["Chemistry"], "total_duration": 55},
-    {"date": datetime(2026, 9, 25).date(), "sessions": 0, "subjects": [], "total_duration": 0},
-    {"date": datetime(2026, 9, 26).date(), "sessions": 1, "subjects": ["Mathematics"], "total_duration": 45},
-    {"date": datetime(2026, 9, 27).date(), "sessions": 0, "subjects": [], "total_duration": 0},
-    {"date": datetime(2026, 9, 28).date(), "sessions": 2, "subjects": ["Physics", "Chemistry"], "total_duration": 90},
-    {"date": datetime(2026, 9, 29).date(), "sessions": 1, "subjects": ["Mathematics"], "total_duration": 40},
-    {"date": datetime(2026, 9, 30).date(), "sessions": 0, "subjects": [], "total_duration": 0},
-]
+def _session_minutes(session: StudySession) -> float:
+    """Minutes a session actually contributed.
 
-# October 2026 data (31 days) - based on September data shifted to October plus Oct 31
-_october_2026 = []
-for day_info in _september_2026:
-    _october_2026.append({
-        "date": datetime(day_info["date"].year, 10, day_info["date"].day),
-        "sessions": day_info["sessions"],
-        "subjects": day_info["subjects"],
-        "total_duration": day_info["total_duration"],
-    })
-# Add October 31
-_october_2026.append({
-    "date": datetime(2026, 10, 31).date(),
-    "sessions": 0,
-    "subjects": [],
-    "total_duration": 0,
-})
-
-demo_calendar_data = {
-    2026: {
-        9: _september_2026,
-        10: _october_2026,
-    }
-}
+    A completed session reports its measured elapsed time. An active one has no
+    elapsed time yet, so its planned length is used -- which is what the user
+    asked for, and is all that exists at that point.
+    """
+    if session.elapsed_seconds is not None:
+        return session.elapsed_seconds / 60
+    return float(session.duration_minutes)
 
 
 @router.get("/calendar", response_model=CalendarResponse)
-def get_calendar(month: int = 9, year: int = 2026) -> CalendarResponse:
-    """
-    Get calendar data for a given month.
+def get_calendar(
+    month: int = Query(
+        default=None,
+        ge=1,
+        le=12,
+        description="Month to return, 1-12. Defaults to the current month.",
+    ),
+    year: int = Query(
+        default=None,
+        ge=1970,
+        le=9999,
+        description="Year to return. Defaults to the current year.",
+    ),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> CalendarResponse:
+    """Summarise the current user's sessions for one month.
 
-    Returns structured session information for each day of the month.
-    In production, this would query the database for real session data.
+    Ownership is enforced in the query itself -- ``StudySession.user_id ==
+    current_user.id`` -- so another user's sessions are never loaded into
+    memory, let alone returned. The React layer plays no part in this.
+
+    Only days that have at least one session are returned. An empty month is an
+    empty list rather than a list of zeroed days, which keeps the "no sessions"
+    state unambiguous instead of a month of fake zeros.
     """
-    month_data = demo_calendar_data.get(year, {}).get(month, [])
-    days = []
-    for day_info in month_data:
-        days.append(
-            CalendarDay(
-                date=day_info["date"],
-                sessions=day_info["sessions"],
-                subjects=day_info.get("subjects", []),
-                total_duration=day_info.get("total_duration", 0),
-            )
+    today_local = datetime.now().astimezone().date()
+    month = month if month is not None else today_local.month
+    year = year if year is not None else today_local.year
+
+    # The month is bounded by local midnights on either side, so the UTC range
+    # that gets translated into local dates is exactly the local month.
+    month_start = datetime.combine(date(year, month, 1), time.min)
+    next_month_start = (
+        datetime.combine(date(year + 1, 1, 1), time.min)
+        if month == 12
+        else datetime.combine(date(year, month + 1, 1), time.min)
+    )
+
+    sessions = (
+        db.query(StudySession)
+        .filter(StudySession.user_id == current_user.id)
+        .filter(StudySession.started_at >= month_start)
+        .filter(StudySession.started_at < next_month_start)
+        .order_by(StudySession.started_at.asc())
+        .all()
+    )
+
+    by_day: dict[date, dict] = {}
+    for session in sessions:
+        day = _local_date(session.started_at)
+        entry = by_day.setdefault(
+            day, {"sessions": 0, "subjects": set(), "total_duration": 0.0}
         )
+        entry["sessions"] += 1
+        entry["subjects"].add(session.subject)
+        entry["total_duration"] += _session_minutes(session)
+
+    days = [
+        CalendarDay(
+            date=day,
+            sessions=entry["sessions"],
+            subjects=sorted(entry["subjects"]),
+            # Sessions shorter than a minute round down to 0, which is honest:
+            # there is no partial-minute study time to report.
+            total_duration=int(entry["total_duration"]),
+        )
+        for day, entry in sorted(by_day.items())
+    ]
+
     return CalendarResponse(month=month, year=year, days=days)
+
+
+__all__ = ["router"]

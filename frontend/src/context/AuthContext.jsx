@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import { login } from '../services/api';
 import { AuthContext, STORAGE_KEY } from './authContextObject';
 
@@ -53,6 +53,11 @@ export function AuthProvider({ children }) {
     localStorage.removeItem(STORAGE_KEY);
   };
 
+  const updateUser = (updatedData) => {
+    setUser(updatedData);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedData));
+  };
+
   const isAuthenticated = !!user;
 
   const value = {
@@ -62,6 +67,7 @@ export function AuthProvider({ children }) {
     error,
     login: loginUser,
     logout: logoutUser,
+    updateUser,
   };
 
   return (
@@ -69,4 +75,15 @@ export function AuthProvider({ children }) {
       {!loading && children}
     </AuthContext.Provider>
   );
+}
+
+export function useAuthContext() {
+  // `createContext()` with no default yields undefined, which is how a call
+  // outside the provider is detected -- a hook that silently returned a
+  // half-built object would fail much later and much less clearly.
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuthContext must be used within an AuthProvider');
+  }
+  return context;
 }

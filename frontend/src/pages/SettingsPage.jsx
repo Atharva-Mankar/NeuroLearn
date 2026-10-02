@@ -1,23 +1,95 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { User, Clock, Video } from 'lucide-react'
-import { settingsData } from '../settingsDefaults'
+import { getProfile, updateProfile } from '../services/api'
+import { useAuthContext } from '../context/AuthContext'
 
 const SettingsPage = () => {
-  const [formData, setFormData] = useState(settingsData)
+  const [profile, setProfile] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [updateLoading, setUpdateLoading] = useState(false)
+  const { updateUser } = useAuthContext()
 
-  const handleChange = (section, field, value) => {
-    setFormData(prev => ({
-      ...prev,
-      [section]: {
-        ...prev[section],
-        [field]: value
+  // Fetch real user data from API
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+        const response = await getProfile()
+        setProfile(response)
+      } catch (err) {
+        setError(err.message || 'Unable to load profile. Please try again.')
+      } finally {
+        setLoading(false)
       }
+    }
+
+    fetchProfile()
+  }, [])
+
+  const handleNameChange = (e) => {
+    setProfile(prev => ({
+      ...prev,
+      name: e.target.value
     }))
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    // Future phase: save to backend
+    if (!profile) return
+
+    try {
+      setUpdateLoading(true)
+      setError(null)
+
+      // Only allow updating name (email is login identifier, should not change)
+      const response = await updateProfile({ name: profile.name })
+
+      // Update AuthContext and localStorage so Navbar initials update
+      updateUser(response)
+
+      // Show success message (could use toast, but for now just reset)
+      setError('Profile updated successfully!')
+      setTimeout(() => setError(null), 3000)
+    } catch (err) {
+      setError(err.message || 'Failed to update profile. Please try again.')
+    } finally {
+      setUpdateLoading(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="text-lg text-slate-600">Loading settings...</div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto p-8">
+          <div className="text-lg text-slate-900 mb-4">Unable to load settings</div>
+          <div className="text-sm text-slate-600 mb-6">{error}</div>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-5 py-3 bg-slate-900 text-white rounded-lg font-medium transition-colors hover:bg-slate-800"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  if (!profile) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="text-lg text-slate-600">No profile data available</div>
+      </div>
+    )
   }
 
   return (
@@ -39,214 +111,105 @@ const SettingsPage = () => {
                 <label className="block text-sm font-medium text-slate-700 mb-2">Name</label>
                 <input
                   type="text"
-                  value={formData.profile.name}
-                  onChange={(e) => handleChange('profile', 'name', e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500"
+                  value={profile.name}
+                  onChange={handleNameChange}
+                  disabled={updateLoading}
+                  className={`
+                    w-full px-3 py-2 border border-slate-300 rounded-lg
+                    focus:outline-none focus:ring-2 focus:ring-slate-500
+                    ${updateLoading ? 'opacity-50' : ''}
+                  `}
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">Email</label>
                 <input
                   type="email"
-                  value={formData.profile.email}
-                  onChange={(e) => handleChange('profile', 'email', e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500"
+                  value={profile.email}
+                  readOnly
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500 opacity-75"
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">Timezone</label>
                 <select
-                  value={formData.profile.timezone}
-                  onChange={(e) => handleChange('profile', 'timezone', e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500"
+                  disabled
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500 opacity-75"
                 >
-                  <option value="UTC+5:30">UTC+5:30</option>
                   <option value="UTC+0">UTC+0</option>
-                  <option value="UTC-5">UTC-5</option>
-                  <option value="UTC-8">UTC-8</option>
                 </select>
+                <p className="text-xs text-slate-500 mt-1">Read-only (displayed from backend)</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">Language</label>
                 <select
-                  value={formData.profile.language}
-                  onChange={(e) => handleChange('profile', 'language', e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500"
+                  disabled
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500 opacity-75"
                 >
                   <option value="English">English</option>
-                  <option value="Spanish">Spanish</option>
-                  <option value="French">French</option>
-                  <option value="German">German</option>
                 </select>
+                <p className="text-xs text-slate-500 mt-1">Read-only (displayed from backend)</p>
               </div>
             </div>
           </section>
 
-          {/* Study Preferences */}
+          {/* Study Preferences - Marked as unavailable */}
           <section className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
             <div className="flex items-center gap-3 mb-4">
               <Clock size={24} className="text-slate-400" />
               <h2 className="text-xl font-semibold text-slate-900">Study Preferences</h2>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Weekly Goal (hours)</label>
-                <input
-                  type="number"
-                  value={formData.studyPreferences.weeklyGoalHours}
-                  onChange={(e) => handleChange('studyPreferences', 'weeklyGoalHours', e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Daily Goal (minutes)</label>
-                <input
-                  type="number"
-                  value={formData.studyPreferences.dailyGoalMinutes}
-                  onChange={(e) => handleChange('studyPreferences', 'dailyGoalMinutes', e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Preferred Start Time</label>
-                <input
-                  type="time"
-                  value={formData.studyPreferences.preferredStartTime}
-                  onChange={(e) => handleChange('studyPreferences', 'preferredStartTime', e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Preferred End Time</label>
-                <input
-                  type="time"
-                  value={formData.studyPreferences.preferredEndTime}
-                  onChange={(e) => handleChange('studyPreferences', 'preferredEndTime', e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Break Reminder (minutes)</label>
-                <input
-                  type="number"
-                  value={formData.studyPreferences.breakReminderInterval}
-                  onChange={(e) => handleChange('studyPreferences', 'breakReminderInterval', e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500"
-                />
-              </div>
+            <div className="bg-slate-50 p-4 rounded">
+              <p className="text-sm text-slate-600">
+                These settings are not yet implemented in this version.
+                Weekly/daily goals, preferred times, and break reminders
+                will be available in a future update.
+              </p>
             </div>
           </section>
 
-          {/* Session Preferences */}
+          {/* Session Preferences - Marked as unavailable */}
           <section className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
             <div className="flex items-center gap-3 mb-4">
               <Clock size={24} className="text-slate-400" />
               <h2 className="text-xl font-semibold text-slate-900">Session Preferences</h2>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Default Duration (minutes)</label>
-                <input
-                  type="number"
-                  value={formData.sessionPreferences.defaultDuration}
-                  onChange={(e) => handleChange('sessionPreferences', 'defaultDuration', e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500"
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={formData.sessionPreferences.autoPauseOnInactivity}
-                  onChange={(e) => handleChange('sessionPreferences', 'autoPauseOnInactivity', e.target.checked)}
-                  className="w-5 h-5 rounded border-slate-300 text-slate-600 focus:ring-slate-500"
-                />
-                <label className="text-sm font-medium text-slate-700">Auto-pause on inactivity</label>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Inactivity Threshold (minutes)</label>
-                <input
-                  type="number"
-                  value={formData.sessionPreferences.inactivityThreshold}
-                  onChange={(e) => handleChange('sessionPreferences', 'inactivityThreshold', e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500"
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={formData.sessionPreferences.showFatigueDuringSession}
-                  onChange={(e) => handleChange('sessionPreferences', 'showFatigueDuringSession', e.target.checked)}
-                  className="w-5 h-5 rounded border-slate-300 text-slate-600 focus:ring-slate-500"
-                />
-                <label className="text-sm font-medium text-slate-700">Show fatigue during session</label>
-              </div>
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={formData.sessionPreferences.playCompletionSound}
-                  onChange={(e) => handleChange('sessionPreferences', 'playCompletionSound', e.target.checked)}
-                  className="w-5 h-5 rounded border-slate-300 text-slate-600 focus:ring-slate-500"
-                />
-                <label className="text-sm font-medium text-slate-700">Play completion sound</label>
-              </div>
+            <div className="bg-slate-50 p-4 rounded">
+              <p className="text-sm text-slate-600">
+                Session settings like auto-pause, fatigue display, and completion sounds
+                are not yet implemented in this version. These will be available in a future update.
+              </p>
             </div>
           </section>
 
-          {/* Webcam Preferences */}
+          {/* Webcam Preferences - Marked as unavailable */}
           <section className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
             <div className="flex items-center gap-3 mb-4">
               <Video size={24} className="text-slate-400" />
               <h2 className="text-xl font-semibold text-slate-900">Webcam Monitoring Preferences</h2>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={formData.webcamPreferences.enableMonitoring}
-                  onChange={(e) => handleChange('webcamPreferences', 'enableMonitoring', e.target.checked)}
-                  className="w-5 h-5 rounded border-slate-300 text-slate-600 focus:ring-slate-500"
-                />
-                <label className="text-sm font-medium text-slate-700">Enable webcam monitoring</label>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Monitoring Frequency</label>
-                <select
-                  value={formData.webcamPreferences.monitoringFrequency}
-                  onChange={(e) => handleChange('webcamPreferences', 'monitoringFrequency', e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500"
-                >
-                  <option value="low">Low</option>
-                  <option value="medium">Medium</option>
-                  <option value="high">High</option>
-                </select>
-              </div>
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={formData.webcamPreferences.saveFrames}
-                  onChange={(e) => handleChange('webcamPreferences', 'saveFrames', e.target.checked)}
-                  className="w-5 h-5 rounded border-slate-300 text-slate-600 focus:ring-slate-500"
-                />
-                <label className="text-sm font-medium text-slate-700">Save frames for analysis</label>
-              </div>
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={formData.webcamPreferences.privacyMode}
-                  onChange={(e) => handleChange('webcamPreferences', 'privacyMode', e.target.checked)}
-                  className="w-5 h-5 rounded border-slate-300 text-slate-600 focus:ring-slate-500"
-                />
-                <label className="text-sm font-medium text-slate-700">Privacy mode</label>
-              </div>
+            <div className="bg-slate-50 p-4 rounded">
+              <p className="text-sm text-slate-600">
+                Webcam monitoring settings are not yet implemented in this version.
+                Enable/disable monitoring, frequency, frame saving, and privacy mode
+                will be available in a future update.
+              </p>
             </div>
           </section>
 
           <div className="flex justify-end">
             <button
               type="submit"
-              className="px-6 py-3 bg-slate-900 text-white rounded-lg font-medium hover:bg-slate-800 transition-colors"
+              disabled={updateLoading || !profile.name.trim()}
+              className={`
+                px-6 py-3
+                ${!profile.name.trim() || updateLoading ? 'bg-slate-400' : 'bg-slate-900'}
+                text-white rounded-lg font-medium
+                hover:${!profile.name.trim() || updateLoading ? 'bg-slate-300' : 'bg-slate-800'}
+                transition-colors
+              `}
             >
-              Save Changes
+              {updateLoading ? 'Saving...' : 'Save Changes'}
             </button>
           </div>
         </form>

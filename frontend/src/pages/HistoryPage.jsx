@@ -9,7 +9,6 @@ const HistoryPage = () => {
   const [sessions, setSessions] = useState([])
   const [filters, setFilters] = useState({
     subject: 'all',
-    fatigue: 'all',
     status: 'all',
     search: '',
     sort: 'date-desc'
@@ -39,9 +38,6 @@ const HistoryPage = () => {
     // Subject filter
     if (filters.subject !== 'all' && session.subject !== filters.subject) return false
 
-    // Fatigue filter
-    if (filters.fatigue !== 'all' && session.fatigue !== filters.fatigue) return false
-
     // Status filter
     if (filters.status !== 'all' && session.status !== filters.status) return false
 
@@ -65,8 +61,9 @@ const HistoryPage = () => {
     setFilters(prev => ({ ...prev, [filter]: value }))
   }
 
-  const handleDeleteSession = (id) => {
-    setSessions(prev => prev.filter(session => session.id !== id))
+  const handleDeleteSession = (_id) => {
+    // Backend not implemented yet - show alert
+    alert('Delete functionality is not yet implemented in this version. Sessions can only be deleted via the backend API.')
   }
 
   const handleRetry = () => {
@@ -127,7 +124,7 @@ const HistoryPage = () => {
 
         {/* Filters */}
         <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm mb-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">Subject</label>
               <select
@@ -139,20 +136,6 @@ const HistoryPage = () => {
                 {[...new Set(sessions.map(s => s.subject))].map((subject) => (
                   <option key={subject} value={subject}>{subject}</option>
                 ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Fatigue Level</label>
-              <select
-                value={filters.fatigue}
-                onChange={(e) => handleFilterChange('fatigue', e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500"
-              >
-                <option value="all">All Levels</option>
-                <option value="Low">Low</option>
-                <option value="Medium">Medium</option>
-                <option value="High">High</option>
               </select>
             </div>
 
@@ -224,7 +207,9 @@ const HistoryPage = () => {
           <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
             <h3 className="text-sm font-medium text-slate-600">Completion Rate</h3>
             <p className="text-2xl font-bold text-slate-900">
-              {Math.round((sessions.filter(s => s.status === 'completed').length / sessions.length) * 100)}%
+              {sessions.length > 0
+                ? Math.round((sessions.filter(s => s.status === 'completed').length / sessions.length) * 100)
+                : 0}%
             </p>
           </div>
         </div>
@@ -233,7 +218,10 @@ const HistoryPage = () => {
         <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
           {filteredSessions.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-slate-500">No sessions found matching your filters.</p>
+              <p className="text-slate-500">No study sessions found.</p>
+              <p className="text-sm text-slate-600 mt-2">
+                Complete a study session to see it appear here.
+              </p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -247,15 +235,17 @@ const HistoryPage = () => {
 
                     <div className="flex items-center gap-3 text-xs">
                       <span>{session.duration} min</span>
-                      <span className={`px-2 py-1 rounded-full ${session.fatigue === 'Low' ? 'bg-green-50 text-green-800' :
-  session.fatigue === 'Medium' ? 'bg-yellow-50 text-yellow-800' : 'bg-red-50 text-red-800'}`}>{session.fatigue}</span>
+                      {/* Fatigue is unavailable - show honest state */}
+                      <span className="px-2 py-1 rounded-full bg-slate-100 text-slate-600">
+                        Unavailable
+                      </span>
                       <span className="px-2 py-1 rounded-full bg-slate-100 text-slate-600">{formatDate(session.date)}</span>
                     </div>
 
                     <div className="flex items-center gap-2">
                       <span className={`px-2 py-1 rounded-full ${session.status === 'completed' ? 'bg-green-50 text-green-800' :
-  session.status === 'in-progress' ? 'bg-blue-50 text-blue-800' :
-  session.status === 'paused' ? 'bg-yellow-50 text-yellow-800' : 'bg-red-50 text-red-800'}`}>{session.status}</span>
+          session.status === 'in-progress' ? 'bg-blue-50 text-blue-800' :
+          session.status === 'paused' ? 'bg-yellow-50 text-yellow-800' : 'bg-red-50 text-red-800'}`}>{session.status}</span>
                       <button
                         onClick={() => handleDeleteSession(session.id)}
                         className="p-1 rounded hover:bg-slate-200 text-slate-400 hover:text-slate-600"
@@ -263,7 +253,7 @@ const HistoryPage = () => {
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <polyline points="3 6 5 6 21 6"></polyline>
-                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2 2h4a2 2 0 0 1 2 2v2"></path>
                         </svg>
                       </button>
                     </div>

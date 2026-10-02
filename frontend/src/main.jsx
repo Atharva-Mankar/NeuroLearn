@@ -31,7 +31,7 @@ createRoot(document.getElementById('root')).render(
             <Route path="/calendar" element={<ProtectedRoute element={<CalendarPage />} />} />
             <Route path="/history" element={<ProtectedRoute element={<HistoryPage />} />} />
             <Route path="/insights" element={<ProtectedRoute element={<InsightsPage />} />} />
-            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/settings" element={<ProtectedRoute element={<SettingsPage />} />} />
           </Route>
         </Routes>
       </Router>
