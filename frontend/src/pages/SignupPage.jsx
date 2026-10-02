@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Mail, Lock, Send } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
+import { signup } from '../services/api'
 
 const SignupPage = () => {
   const [name, setName] = useState('')
@@ -31,18 +32,31 @@ const SignupPage = () => {
     return true
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     if (!validateForm()) return
 
     setError(null)
     setLoading(true)
 
-    setTimeout(() => {
-      setError(null)
+    try {
+      await signup({ name, email, password })
+      // Navigate to login on success
+      setTimeout(() => {
+        setLoading(false)
+        navigate('/login')
+      }, 800)
+    } catch (err) {
+      // Handle duplicate email error
+      if (err.message.includes('already exists')) {
+        setError('An account with this email already exists.')
+      } else if (err.message.includes('Network error')) {
+        setError('Unable to reach the server. Please try again later.')
+      } else {
+        setError(err.message || 'Signup failed. Please try again.')
+      }
       setLoading(false)
-      navigate('/login')
-    }, 1000)
+    }
   }
 
   return (

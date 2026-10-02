@@ -115,5 +115,24 @@ export async function getInsights() {
   return request('/api/insights')
 }
 
+/**
+ * Create a new user account.
+ *
+ * @param {Object} userData - User registration data
+ * @param {string} userData.name - User's full name
+ * @param {string} userData.email - User's email address
+ * @param {string} userData.password - User's password
+ * @returns {Promise<{message: string, user: {id: number, name: string, email: string}>}>
+ */
+export async function signup(userData) {
+  return request('/api/auth/signup', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(userData),
+  })
+}
+
 // Export the base request helper for future endpoints
 export { request }
