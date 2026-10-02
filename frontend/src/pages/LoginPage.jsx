@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { LogIn, Mail, Lock } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '../hooks/useAuth'
 
 const LoginPage = () => {
   const [email, setEmail] = useState('')

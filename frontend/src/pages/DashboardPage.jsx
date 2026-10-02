@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import { TrendingUp, Coffee, ChevronRight, Clock } from 'lucide-react'
 import { getDashboard } from '../services/api'
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '../hooks/useAuth'
 
 const DashboardPage = () => {
   const navigate = useNavigate()

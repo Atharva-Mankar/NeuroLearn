@@ -1,17 +1,6 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { login } from '../services/api';
-
-const AuthContext = createContext();
-
-const STORAGE_KEY = 'neurolearn_user';
-
-export function useAuth() {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-}
+import { AuthContext, STORAGE_KEY } from './authContextObject';
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
