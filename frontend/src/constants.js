@@ -29,7 +29,8 @@ export const fatigueLevels = ['Low', 'Medium', 'High'];
 
 /**
  * Shared note shown wherever an estimated fatigue value appears.
- * Kept here so both demo data and real API can reference the same string.
+ * Kept here so every surface shares one definition. Fatigue values themselves
+ * do not exist yet (no webcam monitoring), so nothing currently renders this.
  */
 export const fatigueDisclaimer =
   'An approximate study-productivity signal, not a medical diagnosis.';
