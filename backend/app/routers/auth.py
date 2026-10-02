@@ -4,7 +4,12 @@ Handles user signup and authentication endpoints.
 """
 
 from fastapi import APIRouter, HTTPException, Depends
-from app.schemas.auth import SignupRequest, SignupResponse
+from app.schemas.auth import (
+    SignupRequest,
+    SignupResponse,
+    LoginRequest,
+    LoginResponse,
+)
 from app.database.connection import SessionLocal, get_db
 from app.models import User
 from pwdlib import PasswordHash
@@ -13,6 +18,12 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 # Initialize the password hasher with Argon2id
 pwd_hasher = PasswordHash.recommended()
+
+# A precomputed hash of an unguessable value. Verifying against this when the
+# supplied email is unknown keeps the response time of "unknown email" and
+# "wrong password" indistinguishable, so login cannot be used to enumerate
+# which addresses have accounts.
+_DUMMY_HASH = pwd_hasher.hash("neurolearn-timing-equalizer-not-a-real-credential")
 
 
 def hash_password(password: str) -> str:
@@ -104,6 +115,58 @@ def signup_endpoint(
             "name": new_user.name,
             "email": new_user.email
         }
+    )
+
+
+@router.post("/login", response_model=LoginResponse)
+def login_endpoint(
+    request: LoginRequest,
+    db: SessionLocal = Depends(get_db)
+):
+    """
+    Authenticate a user against the stored Argon2 password hash.
+
+    Deliberately returns the same 401 for an unknown email and for a wrong
+    password, so the endpoint cannot be used to discover which addresses have
+    accounts.
+
+    Args:
+        request: Login credentials (email and password)
+        db: Database session dependency
+
+    Returns:
+        LoginResponse: Safe user information only (never password/password_hash)
+
+    Raises:
+        HTTPException: 401 for invalid credentials
+    """
+    # Normalize email exactly as signup does
+    email = request.email.lower().strip()
+    password = request.password
+
+    user = db.query(User).filter(User.email == email).first()
+
+    if user is None:
+        # Burn an equivalent amount of CPU hashing so timing does not leak
+        # whether this address exists.
+        verify_password(password, _DUMMY_HASH)
+        raise HTTPException(status_code=401, detail="Invalid email or password.")
+
+    # Verify the submitted password against the stored hash. The plain text
+    # password is only ever passed to Argon2, never compared to a stored value.
+    try:
+        is_valid = verify_password(password, user.password_hash)
+    except Exception:
+        raise HTTPException(status_code=500, detail="Password verification failed")
+
+    if not is_valid:
+        raise HTTPException(status_code=401, detail="Invalid email or password.")
+
+    # Return safe user information only
+    return LoginResponse(
+        id=user.id,
+        name=user.name,
+        email=user.email,
     )
 
 

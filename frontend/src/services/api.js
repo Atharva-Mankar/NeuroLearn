@@ -122,7 +122,7 @@ export async function getInsights() {
  * @param {string} userData.name - User's full name
  * @param {string} userData.email - User's email address
  * @param {string} userData.password - User's password
- * @returns {Promise<{message: string, user: {id: number, name: string, email: string}>}>
+ * @returns {Promise<{message: string, user: {id: number, name: string, email: string}}>}
  */
 export async function signup(userData) {
   return request('/api/auth/signup', {
@@ -131,6 +131,24 @@ export async function signup(userData) {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(userData),
+  })
+}
+
+/**
+ * Authenticate a user.
+ *
+ * @param {Object} credentials - Login credentials
+ * @param {string} credentials.email - User's email address
+ * @param {string} credentials.password - User's password
+ * @returns {Promise<{id: number, name: string, email: string}>}
+ */
+export async function login(credentials) {
+  return request('/api/auth/login', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(credentials),
   })
 }
 

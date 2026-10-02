@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { LogIn, Mail, Lock } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
+import { login } from '../services/api'
 
 const LoginPage = () => {
   const [email, setEmail] = useState('')
@@ -9,22 +10,30 @@ const LoginPage = () => {
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
+
+    // Guard against duplicate submissions while a request is in flight
+    if (loading) return
+
     setError(null)
     setLoading(true)
 
-    // Simulate API call delay
-    setTimeout(() => {
-      // Demo authentication: accept any email/password for now
-      if (email && password) {
-        // Future phase: validate against backend
-        navigate('/dashboard')
+    try {
+      await login({ email, password })
+      // Credentials are valid. No session/JWT yet — just navigate to the
+      // dashboard. This does NOT create persistent authentication state.
+      navigate('/dashboard')
+    } catch (err) {
+      if (err.message.includes('Network error')) {
+        setError('Unable to reach the server. Please try again later.')
+      } else if (err.message.includes('Invalid email or password')) {
+        setError('Invalid email or password.')
       } else {
-        setError('Please fill in all fields')
+        setError(err.message || 'Login failed. Please try again.')
       }
       setLoading(false)
-    }, 800)
+    }
   }
 
   return (
@@ -122,7 +131,7 @@ const LoginPage = () => {
         </div>
 
         <div className="text-center text-xs text-slate-400">
-          NeuroLearn v0.1.0 • Demo Mode
+          NeuroLearn v0.1.0
         </div>
       </div>
     </div>

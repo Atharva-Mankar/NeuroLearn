@@ -35,10 +35,44 @@ class SignupRequest(BaseModel):
         return v
 
 
+class LoginRequest(BaseModel):
+    """Request model for user login."""
+    email: str = Field(..., description="User's email address")
+    password: str = Field(..., min_length=1, description="User's password")
+
+    @validator('email')
+    def email_must_be_valid(cls, v):
+        if not v or not v.strip():
+            raise ValueError('Email is required')
+        email = v.strip().lower()
+        # Same validation as signup so both endpoints agree on what an email is
+        email_regex = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        if not re.match(email_regex, email):
+            raise ValueError('Invalid email format')
+        return email
+
+    @validator('password')
+    def password_must_not_be_empty(cls, v):
+        if not v:
+            raise ValueError('Password is required')
+        return v
+
+
 class SignupResponse(BaseModel):
     """Response model for successful signup."""
     message: str = Field(default="Account created successfully")
     user: dict = Field(..., description="Created user information (without password)")
+
+
+class LoginResponse(BaseModel):
+    """Response model for successful login.
+
+    Carries only safe user fields. password and password_hash are deliberately
+    absent so they cannot be leaked by response serialization.
+    """
+    id: int = Field(..., description="User ID")
+    name: str = Field(..., description="User's name")
+    email: str = Field(..., description="User's normalized email address")
 
 
 class MessageResponse(BaseModel):
