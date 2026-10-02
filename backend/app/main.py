@@ -8,9 +8,12 @@ allows the local React frontend to talk to it, and exposes a simple
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.routers import dashboard, sessions, calendar, history, insights
+from app.database.connection import create_database
+from app.core.config import get_settings
 
-PROJECT_NAME = "NeuroLearn"
-VERSION = "0.1.0"
+settings = get_settings()
+PROJECT_NAME = settings.project_name
+VERSION = settings.version
 
 # The Vite development server runs on port 5173 by default.
 # CORS is a browser security rule. Because the frontend (port 5173) and the
@@ -45,6 +48,9 @@ app.include_router(sessions.router)
 app.include_router(calendar.router)
 app.include_router(history.router)
 app.include_router(insights.router)
+
+# Initialize database on startup
+create_database()
 
 
 @app.get("/health")

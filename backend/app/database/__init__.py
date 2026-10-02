@@ -1,1 +1,5 @@
-"""SQLite database setup will be added in a later phase (Phase 2)."""
+"""Database module initialization."""
+
+from .connection import Base, engine, SessionLocal, get_db, create_database
+
+__all__ = ["Base", "engine", "SessionLocal", "get_db", "create_database"]
