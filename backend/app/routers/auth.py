@@ -7,68 +7,39 @@ from fastapi import APIRouter, HTTPException, Depends
 from app.schemas.auth import SignupRequest, SignupResponse
 from app.database.connection import SessionLocal, get_db
 from app.models import User
-import hashlib
-import secrets
-import binascii
-import os
+from pwdlib import PasswordHash
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
+
+# Initialize the password hasher with Argon2id
+pwd_hasher = PasswordHash.recommended()
 
 
 def hash_password(password: str) -> str:
     """
-    Securely hash a password using PBKDF2-HMAC-SHA256.
+    Securely hash a password using Argon2 via pwdlib.
 
     Args:
         password: Plain text password
 
     Returns:
-        Hex string of hash:salt
+        String containing the Argon2 hash (includes algorithm, parameters, salt, and hash)
     """
-    # Generate a random salt
-    salt = secrets.token_bytes(32)
-
-    # Hash the password with the salt
-    # Using 100,000 iterations for security
-    pwdhash = hashlib.pbkdf2_hmac(
-        'sha256',
-        password.encode('utf-8'),
-        salt,
-        100000
-    )
-
-    # Return hash and salt as hex strings
-    return f"{pwdhash.hex()}:{salt.hex()}"
+    return pwd_hasher.hash(password)
 
 
 def verify_password(password: str, hashed: str) -> bool:
     """
-    Verify a password against a stored hash.
+    Verify a password against a stored Argon2 hash.
 
     Args:
         password: Plain text password to verify
-        hashed: Stored hash in format hash:salt
+        hashed: Stored hash from pwdlib (includes algorithm, parameters, salt, and hash)
 
     Returns:
         True if password matches, False otherwise
     """
-    try:
-        hash_hex, salt_hex = hashed.split(':')
-        salt = bytes.fromhex(salt_hex)
-        expected_hash = bytes.fromhex(hash_hex)
-
-        # Compute hash of provided password
-        pwdhash = hashlib.pbkdf2_hmac(
-            'sha256',
-            password.encode('utf-8'),
-            salt,
-            100000
-        )
-
-        # Compare hashes
-        return secrets.compare_digest(pwdhash, expected_hash)
-    except Exception:
-        return False
+    return pwd_hasher.verify(hashed, password)
 
 
 @router.post("/signup", response_model=SignupResponse)
@@ -135,9 +106,11 @@ def signup_endpoint(
         }
     )
 
+
 @router.get("/health")
 def auth_health():
     """Health check for auth routes."""
     return {"status": "ok"}
+
 
 __all__ = ["router"]

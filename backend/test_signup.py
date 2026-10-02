@@ -12,14 +12,20 @@ except Exception as e:
     print(f"Import error: {e}")
     sys.exit(1)
 
-print("\nTesting hash functions...")
+print("\nTesting hash functions (pwdlib / Argon2)...")
 try:
     test_hash = hash_password("testpassword123")
     print(f"Hash generation: {test_hash[:20]}...")
     print(f"Hash verification (correct): {verify_password('testpassword123', test_hash)}")
     print(f"Hash verification (wrong): {verify_password('wrongpass', test_hash)}")
+
+    # Verify two hashes of the same password are different (salting)
+    test_hash_2 = hash_password("testpassword123")
+    print(f"Two hashes of same password are different: {test_hash != test_hash_2}")
 except Exception as e:
     print(f"Hash error: {e}")
+    import traceback
+    traceback.print_exc()
     sys.exit(1)
 
 print("\nTesting Pydantic validation...")
@@ -69,10 +75,6 @@ try:
     # Test database session
     db = SessionLocal()
 
-    # Check if we can query users
-    user_count = db.query(User).count()
-    print(f"Existing user count: {user_count}")
-
     # Remove any leftover row from a previous run so this test is repeatable
     db.query(User).filter(User.email == "verify@example.com").delete()
     db.commit()
@@ -96,10 +98,9 @@ try:
         # Verify password is hashed (not plaintext)
         is_hashed = saved_user.password_hash != "testpass123"
         print(f"Password is hashed (not plaintext): {is_hashed}")
-        # Verify it's in hash:salt format
-        parts = saved_user.password_hash.split(":")
-        is_proper_format = len(parts) == 2 and len(parts[0]) == 64 and len(parts[1]) == 64
-        print(f"Hash format is correct (hash:salt): {is_proper_format}")
+        # Verify hash uses Argon2 prefix ($argon2)
+        is_argon2 = saved_user.password_hash.startswith("$argon2")
+        print(f"Hash uses Argon2: {is_argon2}")
         # Verify password verification works
         password_correct = verify_password("testpass123", saved_user.password_hash)
         password_wrong = not verify_password("wrongpass", saved_user.password_hash)
