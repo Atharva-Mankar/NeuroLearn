@@ -12,6 +12,7 @@ import HistoryPage from './pages/HistoryPage'
 import InsightsPage from './pages/InsightsPage'
 import SettingsPage from './pages/SettingsPage'
 import { AuthProvider } from './context/AuthContext'
+import ProtectedRoute from './components/routes/ProtectedRoute'
 
 // Development-only: exposes window.testBackendHealth() for Phase 3 testing
 import './utils/devHealthCheck'
@@ -25,11 +26,11 @@ createRoot(document.getElementById('root')).render(
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
           <Route element={<Layout />}>
-            <Route path="/dashboard" element={<DashboardPage />} />
-            <Route path="/session" element={<SessionPage />} />
-            <Route path="/calendar" element={<CalendarPage />} />
-            <Route path="/history" element={<HistoryPage />} />
-            <Route path="/insights" element={<InsightsPage />} />
+            <Route path="/dashboard" element={<ProtectedRoute element={<DashboardPage />} />} />
+            <Route path="/session" element={<ProtectedRoute element={<SessionPage />} />} />
+            <Route path="/calendar" element={<ProtectedRoute element={<CalendarPage />} />} />
+            <Route path="/history" element={<ProtectedRoute element={<HistoryPage />} />} />
+            <Route path="/insights" element={<ProtectedRoute element={<InsightsPage />} />} />
             <Route path="/settings" element={<SettingsPage />} />
           </Route>
         </Routes>
